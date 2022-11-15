@@ -8,3 +8,6 @@
 [submodule "libDaisy"]
 	path = libDaisy
 	url = https://github.com/electro-smith/libDaisy
+[submodule "CHOWTape"]
+	path = CHOWTape
+	url = https://github.com/jatinchowdhury18/AnalogTapeModel
