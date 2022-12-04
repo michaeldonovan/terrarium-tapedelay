@@ -20,7 +20,7 @@ public:
       // _comp.SetRatio(1.1);
       // _comp.SetThreshold(-45);
       // _comp.AutoMakeup(true);
-      _comp.init(3, 150, 0, 1.1, 1, sampleRate);
+      _comp.init(3, 150, 0, 1.1, 3, sampleRate);
       _comp.setMode(Dynamics::COMP);
       _comp.setThreshold(-45);
       _lp.Init(sampleRate);
