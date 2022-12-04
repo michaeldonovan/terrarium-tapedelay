@@ -64,6 +64,12 @@ public:
       // return _comp.GetGain();
    }
 
+   inline void SetAge(float age)
+   {
+      auto fc = daisysp::fmap(1-age, 1000, 6000, daisysp::Mapping::EXP);
+      _lp.SetFreq(fc);
+   }
+
 private: 
    HysteresisProcessing _hyst;
    // daisysp::Compressor _comp;

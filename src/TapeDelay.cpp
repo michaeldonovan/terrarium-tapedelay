@@ -30,7 +30,7 @@ bool tails = true;
 
 Led bypassLed, timeLed;
 
-Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam, stabParam;
+Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam, stabParam, ageParam;
 float mixVal;
 
 
@@ -51,7 +51,7 @@ constexpr float FLUTTER_MAX_AMP = 0.00077 * SAMPLE_RATE;
 
 
 
-Svf lp, hp;
+Svf hp;
 Switch *bypassSw, *tapSw, *tailsSw;
 
 void ProcessControls()
@@ -84,12 +84,10 @@ void ProcessControls()
 	wowOsc.SetAmp(WOW_MAX_AMP * stabVal);
 	flutterOsc.SetAmp(FLUTTER_MAX_AMP * stabVal);
 
-	// auto lpVal = lpParam.Process();
-	// lp.SetFreq(lpVal);
-	lp.SetFreq(5000);
+	// auto hpVal = hpParam.Process();
+	// hp.SetFreq(hpVal);
 
-	auto hpVal = hpParam.Process();
-	hp.SetFreq(hpVal);
+	tape.SetAge(ageParam.Process());
 
 	
 	// timeLed.Set(-1 * tape.GetCompGain());
@@ -107,10 +105,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		{
 			auto dry = in[0][i];
 			auto wet = dry;
-			// lp.Process(wet);
-			// wet= lp.Low();
-			hp.Process(wet);
-			wet = hp.High();
+			// hp.Process(wet);
+			// wet = hp.High();
 			// wet = tape.Process(wet);
 			wet = delay.Process(wet);
 
@@ -151,8 +147,6 @@ int main(void)
 	timeLed.Update();
 	
 	// init filters
-	lp.Init(sr);
-	lp.SetRes(.1);
 	hp.Init(sr);
 	hp.SetRes(.2);
 	
@@ -185,7 +179,7 @@ int main(void)
 	time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
    feedback.Init(hw.knob[Terrarium::KNOB_2], 0.01, 1, Parameter::EXPONENTIAL);
    mix.Init(hw.knob[Terrarium::KNOB_3], 0, 1, Parameter::EXPONENTIAL);
-   hpParam.Init(hw.knob[Terrarium::KNOB_4], 0, 400, Parameter::LOGARITHMIC);
+   ageParam.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
    // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);
    stabParam.Init(hw.knob[Terrarium::KNOB_5], 0, 1, Parameter::LINEAR);
 	satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
