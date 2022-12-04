@@ -87,10 +87,10 @@ void ProcessControls()
 	// hp.SetFreq(hpVal);
 
 	auto age = ageParam.Process();
-   auto lossFc = daisysp::fmap(1-age, 1000, 6000, daisysp::Mapping::EXP);
+   auto lossFc = daisysp::fmap(1-age, 1000.f, 6000.f, daisysp::Mapping::EXP);
 	tape.SetLossCutoff(lossFc);
-	auto tapeDriveDb = daisysp::fmap(age, 6, 24, daisysp::Mapping::LINEAR);
-	tape.SetDrive(tapeDriveDb)
+	auto tapeDriveDb = daisysp::fmap(age, 3.f, 18.f, daisysp::Mapping::LINEAR);
+	tape.SetDrive(tapeDriveDb);
 
 	
 	// timeLed.Set(-1 * tape.GetCompGain());
