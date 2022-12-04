@@ -14,7 +14,7 @@ using daisysp::Oscillator;
 using daisysp::Svf;
 
 
-constexpr auto SAMPLE_RATE = 48000;
+constexpr auto SAMPLE_RATE = 96000;
 constexpr auto MIN_DELAY_SEC = 0.1f;
 constexpr auto MAX_DELAY_SEC = 1;
 constexpr size_t MIN_DELAY = SAMPLE_RATE * MIN_DELAY_SEC;
@@ -46,8 +46,8 @@ Tape tape;
 TapeAttrs tapeAttrs;
 
 Oscillator wowOsc, flutterOsc;
-constexpr float WOW_MAX_AMP = 400;
-constexpr float FLUTTER_MAX_AMP = 37;
+constexpr float WOW_MAX_AMP = .0083 * SAMPLE_RATE;
+constexpr float FLUTTER_MAX_AMP = 0.00077 * SAMPLE_RATE;
 
 
 
@@ -107,11 +107,11 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		{
 			auto dry = in[0][i];
 			auto wet = dry;
-			lp.Process(wet);
-			wet= lp.Low();
+			// lp.Process(wet);
+			// wet= lp.Low();
 			hp.Process(wet);
 			wet = hp.High();
-			wet = tape.Process(wet);
+			// wet = tape.Process(wet);
 			wet = delay.Process(wet);
 
 			auto wowVal = wowOsc.Process();
@@ -137,7 +137,7 @@ int main(void)
 {
 	hw.Init();
 	hw.SetAudioBlockSize(128); 
-	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
+	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_96KHZ);
 	const auto sr = hw.AudioSampleRate();
 
 	bypassSw = &hw.switches[Terrarium::FOOTSWITCH_1];
@@ -159,6 +159,7 @@ int main(void)
 	tape.Init(sr);
 	// init processors
 	delay.Init(sr, DELAY_SMOOTH_SEC);
+	delay.SetFeedbackProcessor(&tape);
 	// wow.Init(sr);
 	// wow.SetRate(1);
 	// wow.SetAmp(.4);
@@ -182,7 +183,7 @@ int main(void)
 	
 	// init knobs
 	time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
-   feedback.Init(hw.knob[Terrarium::KNOB_2], 0, 1, Parameter::EXPONENTIAL);
+   feedback.Init(hw.knob[Terrarium::KNOB_2], 0.01, 1, Parameter::EXPONENTIAL);
    mix.Init(hw.knob[Terrarium::KNOB_3], 0, 1, Parameter::EXPONENTIAL);
    hpParam.Init(hw.knob[Terrarium::KNOB_4], 0, 400, Parameter::LOGARITHMIC);
    // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);

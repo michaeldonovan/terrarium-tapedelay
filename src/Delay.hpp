@@ -3,6 +3,8 @@
 #include <daisysp.h>
 #include "Processor.h"
 #include "SmoothedValue.hpp"
+#include "EnvelopeFollower.hpp"
+
 template<size_t max_size>
 class Delay : public Processor
 {
@@ -24,6 +26,12 @@ public:
       {
          write += in;
       }
+
+      if (_proc)
+      {
+         write = _proc->Process(write);
+      }
+
       _delay.Write(write);
 
       return read;
@@ -54,11 +62,16 @@ public:
       _delay.Reset();
    }
 
+   inline void SetFeedbackProcessor(Processor* proc)
+   {
+      _proc = proc;
+   }
 
 private:
    float _sr;
    SmoothedValue _timeVal;
    float _feedback = 0;
    bool _inputEnable = true;
+   Processor* _proc;
    daisysp::DelayLine<float, max_size> _delay;
 };
