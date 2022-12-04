@@ -1,5 +1,5 @@
 # Project Name
-TARGET = TapeDelay 
+TARGET = TapeDelay
 
 # Sources
 CPP_SOURCES = TapeDelay.cpp
