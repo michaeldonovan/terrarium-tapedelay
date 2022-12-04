@@ -14,7 +14,7 @@ using daisysp::Oscillator;
 using daisysp::Svf;
 
 
-constexpr auto SAMPLE_RATE = 96000;
+constexpr auto SAMPLE_RATE = 48000;
 constexpr auto MIN_DELAY_SEC = 0.1f;
 constexpr auto MAX_DELAY_SEC = 1;
 constexpr size_t MIN_DELAY = SAMPLE_RATE * MIN_DELAY_SEC;
@@ -87,9 +87,9 @@ void ProcessControls()
 	// hp.SetFreq(hpVal);
 
 	auto age = ageParam.Process();
-   auto lossFc = daisysp::fmap(1-age, 1000.f, 6000.f, daisysp::Mapping::EXP);
-	tape.SetLossCutoff(lossFc);
-	auto tapeDriveDb = daisysp::fmap(age, 3.f, 18.f, daisysp::Mapping::LINEAR);
+   auto lpFc = daisysp::fmap(1-age, 1000.f, 6000.f, daisysp::Mapping::EXP);
+	tape.SetLpCutoff(lpFc);
+	auto tapeDriveDb = daisysp::fmap(age, 6.f, 24.f, daisysp::Mapping::LINEAR);
 	tape.SetDrive(tapeDriveDb);
 
 	
@@ -136,7 +136,7 @@ int main(void)
 {
 	hw.Init();
 	hw.SetAudioBlockSize(128); 
-	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_96KHZ);
+	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 	const auto sr = hw.AudioSampleRate();
 
 	bypassSw = &hw.switches[Terrarium::FOOTSWITCH_1];
@@ -154,6 +154,7 @@ int main(void)
 	hp.SetRes(.2);
 	
 	tape.Init(sr);
+	tape.SetHpCutoff(125);
 	// init processors
 	delay.Init(sr, DELAY_SMOOTH_SEC);
 	delay.SetFeedbackProcessor(&tape);
