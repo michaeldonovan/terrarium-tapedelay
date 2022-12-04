@@ -6,6 +6,7 @@
 #include "DspUtils.hpp"
 #include "Tape.hpp"
 #include "Delay.hpp"
+// #include "Vibrato.hpp"
 
 using namespace daisy;
 using terrarium::Terrarium;
@@ -24,25 +25,29 @@ constexpr auto DELAY_SMOOTH_COEFF = 1/(DELAY_SMOOTH_SEC * SAMPLE_RATE);
 
 DaisyPetal hw;
 
-bool effectOn = false;
+bool effectOn = true;
 bool tails = true;
 
 Led bypassLed, timeLed;
 
-Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam;
+Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam, stabParam;
 float mixVal;
 
 
 // processors
 Delay<MAX_DELAY> delay;
-daisysp::DelayLine<float, MAX_DELAY> delayline;
 float currDelay;
 float targetDelay;
 float feedbackVal;
+float timeVal;
 
 Tape tape;
 
 TapeAttrs tapeAttrs;
+
+Oscillator wowOsc, flutterOsc;
+constexpr float WOW_MAX_AMP = 400;
+constexpr float FLUTTER_MAX_AMP = 37;
 
 
 
@@ -64,7 +69,7 @@ void ProcessControls()
    }
 	
 	mixVal = mix.Process();
-	auto timeVal = time.Process();
+	timeVal = time.Process();
 
 	targetDelay = timeVal;
 	
@@ -75,9 +80,15 @@ void ProcessControls()
 	delay.SetTime(timeVal);
 	delay.EnableInput(effectOn);
 
-	auto lpVal = lpParam.Process();
+	auto stabVal = stabParam.Process();
+	wowOsc.SetAmp(WOW_MAX_AMP * stabVal);
+	flutterOsc.SetAmp(FLUTTER_MAX_AMP * stabVal);
+
+	// auto lpVal = lpParam.Process();
+	// lp.SetFreq(lpVal);
+	lp.SetFreq(5000);
+
 	auto hpVal = hpParam.Process();
-	lp.SetFreq(lpVal);
 	hp.SetFreq(hpVal);
 
 	
@@ -103,11 +114,11 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 			wet = tape.Process(wet);
 			wet = delay.Process(wet);
 
-			// daisysp::fonepole(currDelay, targetDelay, 0.0002f);
-			// delayline.SetDelay(currDelay);
-			// float read = delayline.Read();
-			// delayline.Write((feedbackVal * read) + wet);
-			// wet = read;
+			auto wowVal = wowOsc.Process();
+			auto flutterVal = flutterOsc.Process();
+			delay.SetTime(timeVal + wowVal + flutterVal);
+
+			// out[0][i] = wet;
 
 
 
@@ -125,7 +136,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 int main(void)
 {
 	hw.Init();
-	hw.SetAudioBlockSize(4); // number of samples handled per callback
+	hw.SetAudioBlockSize(128); 
 	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 	const auto sr = hw.AudioSampleRate();
 
@@ -148,7 +159,20 @@ int main(void)
 	tape.Init(sr);
 	// init processors
 	delay.Init(sr, DELAY_SMOOTH_SEC);
-	delayline.Init();
+	// wow.Init(sr);
+	// wow.SetRate(1);
+	// wow.SetAmp(.4);
+	// flutter.Init(sr);
+	// flutter.SetRate(3);
+	// flutter.SetAmp(.05);
+	wowOsc.Init(sr);
+	wowOsc.SetWaveform(Oscillator::WAVE_SIN);
+	wowOsc.SetFreq(.7);
+	wowOsc.SetAmp(200);
+	flutterOsc.Init(sr);
+	flutterOsc.SetWaveform(Oscillator::WAVE_SIN);
+	flutterOsc.SetFreq(25);
+	flutterOsc.SetAmp(20); // 50 max
 
 	tapeAttrs.speed = 15;
 	tapeAttrs.spacing = .1;
@@ -157,12 +181,16 @@ int main(void)
 	tapeAttrs.azimuth = 0;
 	
 	// init knobs
-	time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LINEAR);
+	time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
    feedback.Init(hw.knob[Terrarium::KNOB_2], 0, 1, Parameter::EXPONENTIAL);
    mix.Init(hw.knob[Terrarium::KNOB_3], 0, 1, Parameter::EXPONENTIAL);
    hpParam.Init(hw.knob[Terrarium::KNOB_4], 0, 400, Parameter::LOGARITHMIC);
-   lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);
-	satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 24, Parameter::LINEAR);
+   // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);
+   stabParam.Init(hw.knob[Terrarium::KNOB_5], 0, 1, Parameter::LINEAR);
+	satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
+
+	// wow rate: 0-3hz  
+	// flutter rate - 0-100 (exp curve)
 
 	hw.StartAdc();
 	hw.StartAudio(AudioCallback);

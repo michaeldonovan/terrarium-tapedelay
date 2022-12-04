@@ -2,7 +2,7 @@
 TARGET = TapeDelay
 
 # Sources
-CPP_SOURCES = TapeDelay.cpp
+CPP_SOURCES = TapeDelay.cpp HysteresisProcessing.cpp
 
 # Library Locations
 LIBDAISY_DIR = ./libDaisy
