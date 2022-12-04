@@ -1,13 +1,15 @@
 # Project Name
-TARGET = GenFOSS
+TARGET = TapeDelay 
 
 # Sources
-CPP_SOURCES = GenFOSS.cpp
+CPP_SOURCES = TapeDelay.cpp
 
 # Library Locations
-LIBDAISY_DIR = libDaisy/
-DAISYSP_DIR = DaisySP/
+LIBDAISY_DIR = ./libDaisy
+DAISYSP_DIR = ./DaisySP
 
 # Core location, and generic Makefile.
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
+
+C_INCLUDES += -ITerrarium
