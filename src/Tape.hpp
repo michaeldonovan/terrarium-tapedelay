@@ -52,7 +52,7 @@ public:
       return wet;
    }
 
-   inline void SetGain(float gainDb)
+   inline void Drive(float gainDb)
    {
       // _gain = dbToAmp(gainDb);
       _gain = gainDb;
@@ -64,10 +64,10 @@ public:
       // return _comp.GetGain();
    }
 
-   inline void SetAge(float age)
+   inline void SetLossCutoff(float freq)
    {
-      auto fc = daisysp::fmap(1-age, 1000, 6000, daisysp::Mapping::EXP);
-      _lp.SetFreq(fc);
+      _lp.SetFreq(freq);
+
    }
 
 private: 

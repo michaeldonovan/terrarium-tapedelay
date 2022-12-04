@@ -74,7 +74,6 @@ void ProcessControls()
 	targetDelay = timeVal;
 	
 	feedbackVal = feedback.Process();
-	tape.SetGain(satParam.Process());
 
 	delay.SetFeedback(feedbackVal);
 	delay.SetTime(timeVal);
@@ -87,7 +86,11 @@ void ProcessControls()
 	// auto hpVal = hpParam.Process();
 	// hp.SetFreq(hpVal);
 
-	tape.SetAge(ageParam.Process());
+	auto age = ageParam.Process();
+   auto lossFc = daisysp::fmap(1-age, 1000, 6000, daisysp::Mapping::EXP);
+	tape.SetLossCutoff(lossFc);
+	auto tapeDriveDb = daisysp::fmap(age, 6, 24, daisysp::Mapping::LINEAR);
+	tape.SetDrive(tapeDriveDb)
 
 	
 	// timeLed.Set(-1 * tape.GetCompGain());
@@ -182,7 +185,7 @@ int main(void)
    ageParam.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
    // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);
    stabParam.Init(hw.knob[Terrarium::KNOB_5], 0, 1, Parameter::LINEAR);
-	satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
+	// satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
 
 	// wow rate: 0-3hz  
 	// flutter rate - 0-100 (exp curve)
