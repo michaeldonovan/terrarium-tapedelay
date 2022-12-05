@@ -5,22 +5,14 @@
 #include "Processor.h"
 #include "HysteresisProcessing.h"
 #include "EnvelopeFollower.hpp"
-#include "hiir/Upsampler2xFpu.h"
-#include "hiir/Downsampler2xFpu.h"
-#include "hiir/PolyphaseIir2Designer.h"
 #include "Oversampler.hpp"
-
-constexpr size_t TAPE_RESAMPLE_N_COEFFS = 8;
 
 class Tape : public Processor
 {
 public:
    void Init(float sampleRate)
    {
-      hiir::PolyphaseIir2Designer::compute_coefs_spec_order_tbw(_resampleCoefs, TAPE_RESAMPLE_N_COEFFS, 0.04);
-      _upsampler.set_coefs(_resampleCoefs);
-      _downsampler.set_coefs(_resampleCoefs);
-      auto osRate = sampleRate;
+      auto osRate = sampleRate*2;
       _hyst.setSampleRate(osRate);
       _hyst.cook(.5, .5, .5, false);
       _hyst.reset();
@@ -44,15 +36,17 @@ public:
    
    float Process(float in) override
    {
-      auto sample = in;
-      sample = _comp.process(sample);
-      sample *= _gain;
+      auto sample = _os.Process(in, [this](float sample){
+         sample = _comp.process(sample);
+         sample *= _gain;
 
 
-      // clip input to avoid unstable hysteresis
-      sample = daisysp::fclamp(sample, -10, 10);
-      sample = _hyst.process<RK4>((double)sample);
-      sample /= _gain;
+         // clip input to avoid unstable hysteresis
+         sample = daisysp::fclamp(sample, -10, 10);
+         sample = _hyst.process<RK4>((double)sample);
+         sample /= _gain;
+         return sample;
+      });
 
       _lp.Process(sample);
       sample = _lp.Low();
@@ -84,13 +78,10 @@ public:
 
 
 private: 
-   hiir::Upsampler2xFpu<TAPE_RESAMPLE_N_COEFFS> _upsampler;
-   hiir::Downsampler2xFpu<TAPE_RESAMPLE_N_COEFFS> _downsampler;
-   double _resampleCoefs[TAPE_RESAMPLE_N_COEFFS];
+   Oversampler _os;
    HysteresisProcessing _hyst;
    // daisysp::Compressor _comp;
    Dynamics _comp;
-   Oversampler _os;
    daisysp::Svf _lp;
    daisysp::Svf _hp;
    float _gain;

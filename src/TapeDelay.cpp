@@ -14,14 +14,37 @@ using daisysp::Oscillator;
 using daisysp::Svf;
 
 
-constexpr auto SAMPLE_RATE = 48000;
+constexpr auto DAISY_SR = SaiHandle::Config::SampleRate::SAI_48KHZ;
+
+constexpr float SampleRate()
+{
+	switch (DAISY_SR)
+	{
+		case SaiHandle::Config::SampleRate::SAI_96KHZ:
+			return 96000;
+			break;
+		case SaiHandle::Config::SampleRate::SAI_48KHZ:
+			return 48000;
+			break;
+		case SaiHandle::Config::SampleRate::SAI_32KHZ:
+			return 32000;
+			break;
+		case SaiHandle::Config::SampleRate::SAI_16KHZ:
+			return 16000;
+			break;
+		case SaiHandle::Config::SampleRate::SAI_8KHZ:
+			return 8000;
+			break;
+	}
+};
+
 constexpr auto MIN_DELAY_SEC = 0.1f;
 constexpr auto MAX_DELAY_SEC = 1;
-constexpr size_t MIN_DELAY = SAMPLE_RATE * MIN_DELAY_SEC;
-constexpr size_t MAX_DELAY = SAMPLE_RATE * MAX_DELAY_SEC;
+constexpr size_t MIN_DELAY = SampleRate() * MIN_DELAY_SEC;
+constexpr size_t MAX_DELAY = SampleRate() * MAX_DELAY_SEC;
 
 constexpr auto DELAY_SMOOTH_SEC = 0.05f;
-constexpr auto DELAY_SMOOTH_COEFF = 1/(DELAY_SMOOTH_SEC * SAMPLE_RATE);
+constexpr auto DELAY_SMOOTH_COEFF = 1/(DELAY_SMOOTH_SEC * SampleRate());
 
 DaisyPetal hw;
 
@@ -33,6 +56,7 @@ Led bypassLed, timeLed;
 Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam, stabParam, ageParam;
 float mixVal;
 
+Oversampler os;
 
 // processors
 Delay<MAX_DELAY> delay;
@@ -46,8 +70,8 @@ Tape tape;
 TapeAttrs tapeAttrs;
 
 Oscillator wowOsc, flutterOsc;
-constexpr float WOW_MAX_AMP = .0083 * SAMPLE_RATE;
-constexpr float FLUTTER_MAX_AMP = 0.00077 * SAMPLE_RATE;
+constexpr float WOW_MAX_AMP = .0083 * SampleRate();
+constexpr float FLUTTER_MAX_AMP = 0.00077 * SampleRate();
 
 
 
@@ -135,8 +159,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 int main(void)
 {
 	hw.Init();
-	hw.SetAudioBlockSize(128); 
-	hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
+	hw.SetAudioBlockSize(1024); 
+	hw.SetAudioSampleRate(DAISY_SR);
 	const auto sr = hw.AudioSampleRate();
 
 	bypassSw = &hw.switches[Terrarium::FOOTSWITCH_1];
