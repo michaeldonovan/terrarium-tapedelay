@@ -86,9 +86,9 @@ float tempo_osc_val;
 
 Switch *bypassSw, *tapSw, *tailsSw;
 
-void ProcessControls()
+void ProcessSwitches()
 {
-    hw.ProcessAllControls();
+    hw.ProcessDigitalControls();
 
     if(bypassSw->RisingEdge())
     {
@@ -96,22 +96,35 @@ void ProcessControls()
         if(effectOn && !tails) { delay.Reset(); }
     }
 
-    mixVal = mix.Process();
-
-    const auto time_knob_val = time.Process();
-    // Get delay time. Prefer tap tempo if available
     if(tapSw->RisingEdge())
     {
         const auto beat_len_ms = tap_tempo.Tap();
-        const auto beat_len_samples = beat_len_ms * SampleRate() / mbdsp::MS_PER_SEC;
+        const auto beat_len_samples = beat_len_ms * SampleRate() * .001f;
         if(beat_len_samples >= MIN_DELAY && beat_len_samples <= MAX_DELAY)
         {
+            last_time_knob_val = delay_time;
             delay_time = beat_len_samples;
-            last_time_knob_val = time_knob_val;
             using_tap = true;
         }
     }
-    else if(using_tap)
+
+    tempo_led.Set(tempo_osc_val > .95);
+    bypass_led.Set(effectOn);
+
+    bypass_led.Update();
+    tempo_led.Update();
+}
+
+void ProcessKnobs()
+{
+    hw.ProcessAnalogControls();
+
+    mixVal = mix.Process();
+
+    const auto time_knob_val = time.Process();
+
+    // Get delay time. Prefer tap tempo if available
+    if(using_tap)
     {
         // if we're in tap mode and the time knob has been touched, deactivate
         // tap mode
@@ -149,17 +162,11 @@ void ProcessControls()
     tape.SetLossFilter(lpFc);
     auto tapeDriveDb = mbdsp::remap(age, 6.f, 20.f);
     tape.SetDrive(tapeDriveDb);
-
-    tempo_led.Set(tempo_osc_val > .95);
-    bypass_led.Set(effectOn);
-
-    bypass_led.Update();
-    tempo_led.Update();
 }
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
 {
-    ProcessControls();
+    ProcessKnobs();
     for(size_t i = 0; i < size; i++)
     {
         tempo_osc_val = tempo_osc.Process();
@@ -249,5 +256,9 @@ int main(void)
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
 
-    while(1) { System::Delay(10); }
+    while(1)
+    {
+        ProcessSwitches();
+        System::Delay(5);
+    }
 }
