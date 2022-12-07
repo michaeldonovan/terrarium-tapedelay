@@ -14,6 +14,18 @@ constexpr double twopi() { return pi() * 2; }
 constexpr auto MS_PER_SEC = 1000;
 constexpr auto SEC_PER_MIN = 60;
 
+template <typename T>
+inline constexpr T samples_to_ms(T samples, T sample_rate)
+{
+    return samples / (sample_rate * 1000);
+}
+
+template <typename T>
+inline constexpr T samples_to_sec(T samples, T sample_rate)
+{
+    return samples / sample_rate;
+}
+
 /**
  * From https://openaudio.blogspot.com/2017/02/faster-log10-and-pow.html
  */
@@ -249,14 +261,14 @@ inline constexpr int sign(Numeric_t val)
 }
 
 template <class Numeric_t>
-inline constexpr Numeric_t MsToBpm(Numeric_t ms)
+inline constexpr Numeric_t ms_to_bpm(Numeric_t ms)
 {
     return ms / static_cast<Numeric_t>(MS_PER_SEC * SEC_PER_MIN);
 }
 
 template <class Numeric_t>
-inline constexpr bool WithinTolerance(Numeric_t target, Numeric_t val,
-                                      Numeric_t tolerance_percent = 5)
+inline constexpr bool within_tolerance(Numeric_t target, Numeric_t val,
+                                       Numeric_t tolerance_percent = 5)
 {
     const auto tolerance = target * tolerance_percent * .01;
     return val >= target - tolerance && val <= target + tolerance;
