@@ -1,9 +1,9 @@
-[submodule "src/DaisySP"]
-	path = src/DaisySP
+[submodule "DaisySP"]
+	path = src/thirdparty/DaisySP
 	url = https://github.com/electro-smith/DaisySP
-[submodule "src/libDaisy"]
-	path = src/libDaisy
+[submodule "libDaisy"]
+	path = src/thirdparty/libDaisy
 	url = https://github.com/electro-smith/libDaisy
-[submodule "src/Terrarium"]
-	path = src/Terrarium
+[submodule "Terrarium"]
+	path = src/thirdparty/Terrarium
 	url = https://github.com/PedalPCB/Terrarium
