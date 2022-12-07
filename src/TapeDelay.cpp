@@ -2,16 +2,15 @@
 #include "daisysp.h"
 #include "terrarium.h"
 #include "TapeAttrs.hpp"
-#include "LossFilter.hpp"
 #include "DspUtils.hpp"
 #include "Tape.hpp"
 #include "Delay.hpp"
+#include <random>
 // #include "Vibrato.hpp"
 
 using namespace daisy;
 using terrarium::Terrarium;
 using daisysp::Oscillator;
-using daisysp::Svf;
 
 
 constexpr auto DAISY_SR = SaiHandle::Config::SampleRate::SAI_48KHZ;
@@ -39,12 +38,17 @@ constexpr float SampleRate()
 };
 
 constexpr auto MIN_DELAY_SEC = 0.1f;
-constexpr auto MAX_DELAY_SEC = 1;
+constexpr auto MAX_DELAY_SEC = 1.f;
 constexpr size_t MIN_DELAY = SampleRate() * MIN_DELAY_SEC;
 constexpr size_t MAX_DELAY = SampleRate() * MAX_DELAY_SEC;
 
 constexpr auto DELAY_SMOOTH_SEC = 0.05f;
 constexpr auto DELAY_SMOOTH_COEFF = 1/(DELAY_SMOOTH_SEC * SampleRate());
+
+constexpr auto WOW_FREQ = 0.4f;
+constexpr auto FLUTTER_FREQ = 25.f;
+constexpr float WOW_MAX_AMP = .0092 * SampleRate();
+constexpr float FLUTTER_MAX_AMP = 0.00085 * SampleRate();
 
 DaisyPetal hw;
 
@@ -70,12 +74,7 @@ Tape tape;
 TapeAttrs tapeAttrs;
 
 Oscillator wowOsc, flutterOsc;
-constexpr float WOW_MAX_AMP = .0083 * SampleRate();
-constexpr float FLUTTER_MAX_AMP = 0.00077 * SampleRate();
 
-
-
-Svf hp;
 Switch *bypassSw, *tapSw, *tailsSw;
 
 void ProcessControls()
@@ -105,15 +104,23 @@ void ProcessControls()
 
 	auto stabVal = stabParam.Process();
 	wowOsc.SetAmp(WOW_MAX_AMP * stabVal);
+	randWowOsc.SetAmp(WOW_MAX_AMP * stabVal);
 	flutterOsc.SetAmp(FLUTTER_MAX_AMP * stabVal);
 
 	// auto hpVal = hpParam.Process();
 	// hp.SetFreq(hpVal);
 
+	// adjust wow and flutter times based on tape speed (delay time)
+	auto timing_mult = mbdsp::remap(timeVal, static_cast<float>(MIN_DELAY), static_cast<float>(MAX_DELAY), -1.f, 1.f);
+	auto wow_mod = WOW_FREQ * .2f * timing_mult;
+	auto flut_mod = FLUTTER_FREQ * .2f *  timing_mult;
+	wowOsc.SetFreq(WOW_FREQ + wow_mod);
+	flutterOsc.SetFreq(FLUTTER_FREQ + flut_mod);
+
 	auto age = ageParam.Process();
-   auto lpFc = daisysp::fmap(1-age, 1000.f, 6000.f, daisysp::Mapping::EXP);
-	tape.SetLpCutoff(lpFc);
-	auto tapeDriveDb = daisysp::fmap(age, 6.f, 24.f, daisysp::Mapping::LINEAR);
+   auto lpFc = mbdsp::remap_exp(1-age, 1000.f, 6000.f);
+	tape.SetLossFilter(lpFc);
+	auto tapeDriveDb = mbdsp::remap(age, 6.f, 20.f);
 	tape.SetDrive(tapeDriveDb);
 
 	
@@ -132,8 +139,6 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 		{
 			auto dry = in[0][i];
 			auto wet = dry;
-			// hp.Process(wet);
-			// wet = hp.High();
 			// wet = tape.Process(wet);
 			wet = delay.Process(wet);
 
@@ -173,10 +178,6 @@ int main(void)
 	timeLed.Init(hw.seed.GetPin(Terrarium::LED_2), false);
 	timeLed.Update();
 	
-	// init filters
-	hp.Init(sr);
-	hp.SetRes(.2);
-	
 	tape.Init(sr);
 	tape.SetHpCutoff(125);
 	// init processors
@@ -190,11 +191,12 @@ int main(void)
 	// flutter.SetAmp(.05);
 	wowOsc.Init(sr);
 	wowOsc.SetWaveform(Oscillator::WAVE_SIN);
-	wowOsc.SetFreq(.7);
+	wowOsc.SetFreq(WOW_FREQ);
 	wowOsc.SetAmp(200);
+	randWowOsc.Init(sr, 10, 500);
 	flutterOsc.Init(sr);
 	flutterOsc.SetWaveform(Oscillator::WAVE_SIN);
-	flutterOsc.SetFreq(25);
+	flutterOsc.SetFreq(FLUTTER_FREQ);
 	flutterOsc.SetAmp(20); // 50 max
 
 	tapeAttrs.speed = 15;
@@ -209,7 +211,7 @@ int main(void)
    mix.Init(hw.knob[Terrarium::KNOB_3], 0, 1, Parameter::EXPONENTIAL);
    ageParam.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
    // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000, Parameter::LOGARITHMIC);
-   stabParam.Init(hw.knob[Terrarium::KNOB_5], 0, 1, Parameter::LINEAR);
+   stabParam.Init(hw.knob[Terrarium::KNOB_5], 0, 1, Parameter::EXPONENTIAL);
 	// satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
 
 	// wow rate: 0-3hz  
