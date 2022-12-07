@@ -6,6 +6,7 @@
 #include "Tape.hpp"
 #include "Delay.hpp"
 #include <random>
+#include "TapTempo.hpp"
 // #include "Vibrato.hpp"
 
 using namespace daisy;
@@ -42,8 +43,7 @@ constexpr auto MAX_DELAY_SEC = 1.f;
 constexpr size_t MIN_DELAY = SampleRate() * MIN_DELAY_SEC;
 constexpr size_t MAX_DELAY = SampleRate() * MAX_DELAY_SEC;
 
-constexpr auto DELAY_SMOOTH_SEC = 0.05f;
-constexpr auto DELAY_SMOOTH_COEFF = 1/(DELAY_SMOOTH_SEC * SampleRate());
+constexpr auto DELAY_SMOOTH_MS = 500.f;
 
 constexpr auto WOW_FREQ = 0.4f;
 constexpr auto FLUTTER_FREQ = 25.f;
@@ -60,14 +60,21 @@ Led bypassLed, timeLed;
 Parameter mix, time, feedback, lpParam, hpParam, driveParam, satParam, stabParam, ageParam;
 float mixVal;
 
-Oversampler os;
 
 // processors
 Delay<MAX_DELAY> delay;
 float currDelay;
-float targetDelay;
 float feedbackVal;
-float timeVal;
+
+
+// The currently active delay time
+float delay_time;
+
+// The last time value read from the time knob before switching to tap tempo
+float last_knob_time_val;
+
+mbdsp::TapTempo<decltype(&daisy::System::GetNow)> tap_tempo;
+bool using_tap = false;
 
 Tape tape;
 
@@ -92,26 +99,53 @@ void ProcessControls()
    }
 	
 	mixVal = mix.Process();
-	timeVal = time.Process();
 
-	targetDelay = timeVal;
+
+
+	const auto time_knob_val = time.Process();
+	// Get delay time. Prefer tap tempo if available 
+	if (tapSw->RisingEdge())
+	{
+		const auto beat_len_ms = tap_tempo.Tap();
+		const auto beat_len_samples = beat_len_ms * SampleRate() / mbdsp::MS_PER_SEC;
+		if (beat_len_samples >= MIN_DELAY && beat_len_samples <= MAX_DELAY)
+		{
+			delay_time = beat_len_samples;
+			last_knob_time_val = time_knob_val;
+			using_tap = true;
+		}
+	}
+	else if (using_tap)
+	{
+		// if we're in tap mode and the time knob has been touched, deactivate tap mode
+		if (!mbdsp::WithinTolerance(last_knob_time_val, time_knob_val, 5.f))
+		{
+			using_tap = false;
+			delay_time = time_knob_val;
+			tap_tempo.Reset();
+		}
+	}
+	else
+	{
+		delay_time = time_knob_val;
+	}
+
 	
 	feedbackVal = feedback.Process();
 
 	delay.SetFeedback(feedbackVal);
-	delay.SetTime(timeVal);
+	delay.SetTime(delay_time);
 	delay.EnableInput(effectOn);
 
 	auto stabVal = stabParam.Process();
 	wowOsc.SetAmp(WOW_MAX_AMP * stabVal);
-	randWowOsc.SetAmp(WOW_MAX_AMP * stabVal);
 	flutterOsc.SetAmp(FLUTTER_MAX_AMP * stabVal);
 
 	// auto hpVal = hpParam.Process();
 	// hp.SetFreq(hpVal);
 
 	// adjust wow and flutter times based on tape speed (delay time)
-	auto timing_mult = mbdsp::remap(timeVal, static_cast<float>(MIN_DELAY), static_cast<float>(MAX_DELAY), -1.f, 1.f);
+	auto timing_mult = mbdsp::remap(delay_time, static_cast<float>(MIN_DELAY), static_cast<float>(MAX_DELAY), -1.f, 1.f);
 	auto wow_mod = WOW_FREQ * .2f * timing_mult;
 	auto flut_mod = FLUTTER_FREQ * .2f *  timing_mult;
 	wowOsc.SetFreq(WOW_FREQ + wow_mod);
@@ -144,7 +178,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
 			auto wowVal = wowOsc.Process();
 			auto flutterVal = flutterOsc.Process();
-			delay.SetTime(timeVal + wowVal + flutterVal);
+			delay.SetTime(delay_time + wowVal + flutterVal);
 
 			// out[0][i] = wet;
 
@@ -177,11 +211,13 @@ int main(void)
 	bypassLed.Update();
 	timeLed.Init(hw.seed.GetPin(Terrarium::LED_2), false);
 	timeLed.Update();
+
+	tap_tempo.Init(&daisy::System::GetNow, MAX_DELAY_SEC * 1000);
 	
 	tape.Init(sr);
 	tape.SetHpCutoff(125);
 	// init processors
-	delay.Init(sr, DELAY_SMOOTH_SEC);
+	delay.Init(sr, DELAY_SMOOTH_MS);
 	delay.SetFeedbackProcessor(&tape);
 	// wow.Init(sr);
 	// wow.SetRate(1);
@@ -193,7 +229,6 @@ int main(void)
 	wowOsc.SetWaveform(Oscillator::WAVE_SIN);
 	wowOsc.SetFreq(WOW_FREQ);
 	wowOsc.SetAmp(200);
-	randWowOsc.Init(sr, 10, 500);
 	flutterOsc.Init(sr);
 	flutterOsc.SetWaveform(Oscillator::WAVE_SIN);
 	flutterOsc.SetFreq(FLUTTER_FREQ);

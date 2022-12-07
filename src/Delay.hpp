@@ -9,16 +9,16 @@ template<size_t max_size>
 class Delay : public Processor
 {
 public:
-   void Init(float sampleRate, float timeSmoothSec)
+   void Init(float sample_rate, float time_smooth_ms)
    {
-      fs_ = sampleRate;
+      fs_ = sample_rate;
       delay_.Init();
-      timeVal_.Init(sampleRate, timeSmoothSec);
+      timeVal_.Init(sample_rate, time_smooth_ms);
    }
 
    float Process(float in) override
    {
-      delay_.SetDelay(timeVal_.GetNext());
+      delay_.SetDelay(timeVal_.Process());
 
       auto read = delay_.Read();
       float write = feedback_ * read; 
@@ -69,7 +69,7 @@ public:
 
 private:
    float fs_;
-   SmoothedValue timeVal_;
+   mbdsp::SmoothedValue<float> timeVal_;
    float feedback_ = 0;
    bool inputEnable_ = true;
    Processor* proc_;

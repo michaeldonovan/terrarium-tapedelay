@@ -1,12 +1,17 @@
-#pragma once
+#ifndef DSPUTILS_HPP
+#define DSPUTILS_HPP
+
 #include <math.h>
 #include <daisysp.h>
 
 namespace mbdsp
 {
 
-
 constexpr double pi() { return std::atan(1)*4; } 
+constexpr double twopi() { return pi() * 2; }
+
+constexpr auto MS_PER_SEC = 1000;
+constexpr auto SEC_PER_MIN= 60;
 
 
 /**
@@ -217,6 +222,21 @@ inline constexpr int sign(Numeric_t val)
    return (static_cast<Numeric_t>(0) < val) - (val < static_cast<Numeric_t>(0));
 }
 
+
+template <class Numeric_t>
+inline constexpr Numeric_t MsToBpm(Numeric_t ms)
+{
+   return ms / static_cast<Numeric_t>(MS_PER_SEC * SEC_PER_MIN);
+}
+
+
+template <class Numeric_t>
+inline constexpr bool WithinTolerance(Numeric_t target, Numeric_t val, Numeric_t tolerance_percent = 5)
+{
+   const auto tolerance = target * tolerance_percent * .01;
+   return val >= target - tolerance && val <= target + tolerance;
+}
+
 /**
  * DC blocker
  * 
@@ -254,3 +274,5 @@ private:
    Float_t last_out_ = 0;
 };
 }
+
+#endif // DSPUTILS_HPP
