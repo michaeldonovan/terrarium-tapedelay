@@ -12,77 +12,92 @@ class Tape : public Processor
 public:
    void Init(float sampleRate)
    {
-      auto osRate = sampleRate*2;
-      _hyst.setSampleRate(osRate);
-      _hyst.cook(.5, .5, .5, false);
-      _hyst.reset();
-      _os.Init();
-      // _comp.Init(sampleRate);
-      // _comp.SetAttack(0.003); // 3ms
-      // _comp.SetRelease(0.15); // 150ms 
-      // _comp.SetRatio(1.1);
-      // _comp.SetThreshold(-45);
-      // _comp.AutoMakeup(true);
-      _comp.init(3, 150, 0, 1.1, 3, osRate);
-      _comp.setMode(Dynamics::COMP);
-      _comp.setThreshold(-45);
-      _lp.Init(sampleRate);
-      _lp.SetFreq(5000);
-      _lp.SetRes(0);
-      _hp.Init(sampleRate);
-      _hp.SetFreq(50);
-      _hp.SetRes(0);
+      os_rate_ = sampleRate*2;
+      hyst_.setSampleRate(os_rate_);
+      hyst_.cook(.5, .5, .5, false);
+      hyst_.reset();
+      os_.Init();
+      // comp_.Init(sampleRate);
+      // comp_.SetAttack(0.003); // 3ms
+      // comp_.SetRelease(0.15); // 150ms 
+      // comp_.SetRatio(1.1);
+      // comp_.SetThreshold(-45);
+      // comp_.AutoMakeup(true);
+      comp_.init(3, 150, 0, 1.1, 3, os_rate_);
+      comp_.setMode(Dynamics::COMP);
+      comp_.setThreshold(-45);
+      lp_.Init(os_rate_);
+      lp_.SetFreq(5000);
+      lp_.SetRes(0);
+      hp_.Init(os_rate_);
+      hp_.SetFreq(50);
+      hp_.SetRes(0);
    }
    
    float Process(float in) override
    {
-      auto sample = _os.Process(in, [this](float sample){
-         sample = _comp.process(sample);
-         sample *= _gain;
+      auto sample = os_.Process(in, [this](float sample){
 
+         // Compression
+         sample = comp_.process(sample);
 
+         // Hysteresis
+         sample *= pre_gain_;
          // clip input to avoid unstable hysteresis
-         sample = daisysp::fclamp(sample, -10, 10);
-         sample = _hyst.process<RK4>((double)sample);
-         sample /= _gain;
+         sample = mbdsp::clamp<float>(sample, -10, 10);
+         sample = hyst_.process<RK2>((double)sample);
+         sample /= pre_gain_;
+
+         // Loss
+         lp_.Process(sample);
+         sample = lp_.Low();
+         hp_.Process(sample);
+         sample = hp_.High();
+
          return sample;
       });
 
-      _lp.Process(sample);
-      sample = _lp.Low();
-      _hp.Process(sample);
-      sample = _hp.High();
-      return sample;
+      return sample * post_gain_;
    }
 
    inline void SetDrive(float gainDb)
    {
-      _gain = dbToAmp(gainDb);
+      pre_gain_ = mbdsp::db_to_amp(gainDb);
    }
 
    inline float GetCompGain()
    {
       return 0;
-      // return _comp.GetGain();
+      // return comp_.GetGain();
    }
 
-   inline void SetLpCutoff(float freq)
+   inline void SetLossFilter(float freq)
    {
-      _lp.SetFreq(freq);
+      static constexpr auto min_fc = 1000.f;
+      static constexpr auto max_fc = 15000.f;
+
+      freq = mbdsp::clamp(freq, min_fc, max_fc);
+      lp_.SetFreq(freq);
+      
+      // add a bit of gain to compensate for loudness lost due to filter
+      auto gain_db = mbdsp::remap(max_fc - freq, min_fc, max_fc, 0.f, 6.f);
+      post_gain_ = mbdsp::db_to_amp(gain_db);
    }
 
    inline void SetHpCutoff(float freq)
    {
-      _hp.SetFreq(freq);
+      hp_.SetFreq(freq);
    }
 
 
 private: 
-   Oversampler _os;
-   HysteresisProcessing _hyst;
-   // daisysp::Compressor _comp;
-   Dynamics _comp;
-   daisysp::Svf _lp;
-   daisysp::Svf _hp;
-   float _gain;
+   Oversampler os_;
+   HysteresisProcessing hyst_;
+   // daisysp::Compressor comp_;
+   Dynamics comp_;
+   daisysp::Svf lp_;
+   daisysp::Svf hp_;
+   float post_gain_;
+   float pre_gain_;
+   float os_rate_;
 };
