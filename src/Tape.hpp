@@ -3,7 +3,7 @@
 
 #include "DspUtils.hpp"
 #include "Processor.h"
-#include "HysteresisProcessing.h"
+#include "CHOWTape/HysteresisProcessing.h"
 #include "EnvelopeFollower.hpp"
 #include "Oversampler.hpp"
 
@@ -78,7 +78,7 @@ public:
 
       freq = mbdsp::clamp(freq, min_fc, max_fc);
       lp_.SetFreq(freq);
-      
+
       // add a bit of gain to compensate for loudness lost due to filter
       auto gain_db = mbdsp::remap(max_fc - freq, min_fc, max_fc, 0.f, 6.f);
       post_gain_ = mbdsp::db_to_amp(gain_db);
