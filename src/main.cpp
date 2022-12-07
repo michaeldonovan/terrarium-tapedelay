@@ -50,6 +50,8 @@ constexpr auto FLUTTER_FREQ = 25.f;
 constexpr float WOW_MAX_AMP = .0092 * SampleRate();
 constexpr float FLUTTER_MAX_AMP = 0.00085 * SampleRate();
 
+constexpr auto HOLD_MS = 250;
+
 DaisyPetal hw;
 
 bool effectOn = true;
@@ -64,7 +66,8 @@ float mixVal;
 // processors
 Delay<MAX_DELAY> delay;
 float currDelay;
-float feedbackVal;
+mbdsp::SmoothedValue<float> feedback_val;
+bool overload = false;
 
 // The currently active delay time
 float delay_time;
@@ -95,20 +98,33 @@ void ProcessSwitches()
         effectOn = !effectOn;
         if(effectOn && !tails) { delay.Reset(); }
     }
+    delay.EnableInput(effectOn);
+
+    // if bypass switch held, clear delay
+    if(bypassSw->TimeHeldMs() > HOLD_MS) { delay.Reset(); }
 
     if(tapSw->RisingEdge())
     {
         const auto beat_len_ms = tap_tempo.Tap();
-        const auto beat_len_samples = beat_len_ms * SampleRate() * .001f;
+        const auto beat_len_samples = beat_len_ms * hw.AudioSampleRate() * .001f;
         if(beat_len_samples >= MIN_DELAY && beat_len_samples <= MAX_DELAY)
         {
-            last_time_knob_val = delay_time;
             delay_time = beat_len_samples;
             using_tap = true;
         }
     }
 
-    tempo_led.Set(tempo_osc_val > .95);
+    // if bypass switch held, clear delay
+    if(tapSw->TimeHeldMs() > HOLD_MS)
+    {
+        overload = true;
+        feedback_val.SetTarget(mbdsp::db_to_amp(7));
+        tempo_led.Set(1);
+    }
+    if(tapSw->FallingEdge()) { overload = false; }
+
+    if(!overload) { tempo_led.Set(tempo_osc_val > .95); }
+
     bypass_led.Set(effectOn);
 
     bypass_led.Update();
@@ -135,15 +151,20 @@ void ProcessKnobs()
             tap_tempo.Reset();
         }
     }
-    else { delay_time = time_knob_val; }
+    else
+    {
+        delay_time = time_knob_val;
+        last_time_knob_val = delay_time;
+    }
 
-    feedbackVal = feedback.Process();
+    auto fback = feedback.Process();
+    if(!overload)
+    {
+        feedback_val.SetTarget(fback);
+        delay.SetTime(delay_time);
+    }
 
-    delay.SetFeedback(feedbackVal);
-    delay.SetTime(delay_time);
-    delay.EnableInput(effectOn);
-
-    tempo_osc.SetFreq(SampleRate() / delay_time);
+    tempo_osc.SetFreq(hw.AudioSampleRate() / delay_time);
 
     auto stabVal = stabParam.Process();
     wow_osc.SetAmp(WOW_MAX_AMP * stabVal);
@@ -160,7 +181,7 @@ void ProcessKnobs()
     auto age = ageParam.Process();
     auto lpFc = mbdsp::remap_exp(1 - age, 1000.f, 6000.f);
     tape.SetLossFilter(lpFc);
-    auto tapeDriveDb = mbdsp::remap(age, 6.f, 20.f);
+    auto tapeDriveDb = mbdsp::remap(age, 6.f, 14.f);
     tape.SetDrive(tapeDriveDb);
 }
 
@@ -170,6 +191,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     for(size_t i = 0; i < size; i++)
     {
         tempo_osc_val = tempo_osc.Process();
+        delay.SetFeedback(feedback_val.Process());
         if(effectOn || tails)
         {
             auto dry = in[0][i];
@@ -196,7 +218,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 int main(void)
 {
     hw.Init();
-    hw.SetAudioBlockSize(1024);
+    hw.SetAudioBlockSize(4);
     hw.SetAudioSampleRate(DAISY_SR);
     const auto sr = hw.AudioSampleRate();
 
@@ -212,7 +234,7 @@ int main(void)
     tap_tempo.Init(&daisy::System::GetNow, MAX_DELAY_SEC * 1000);
 
     tape.Init(sr);
-    tape.SetHpCutoff(125);
+    tape.SetHpCutoff(150);
     // init processors
     delay.Init(sr, DELAY_SMOOTH_MS);
     delay.SetFeedbackProcessor(&tape);
@@ -234,6 +256,8 @@ int main(void)
     tempo_osc.SetWaveform(Oscillator::WAVE_SIN);
     tempo_osc.SetAmp(1);
 
+    feedback_val.Init(sr, 250, .5);
+
     tapeAttrs.speed = 15;
     tapeAttrs.spacing = .1;
     tapeAttrs.thickness = .1;
@@ -242,7 +266,7 @@ int main(void)
 
     // init knobs
     time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
-    feedback.Init(hw.knob[Terrarium::KNOB_2], 0.01, 1, Parameter::EXPONENTIAL);
+    feedback.Init(hw.knob[Terrarium::KNOB_2], 0.00, 1, Parameter::LINEAR);
     mix.Init(hw.knob[Terrarium::KNOB_3], 0, 1, Parameter::EXPONENTIAL);
     ageParam.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
     // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000,
