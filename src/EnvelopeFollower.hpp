@@ -16,7 +16,6 @@
 
 class EnvFollower{
 public:
-
     enum kMode{
         kPeak,
         kRMS
@@ -33,10 +32,10 @@ public:
     
     virtual void init(int detectMode, float attackMS, float releaseMS, float holdMS, float SampleRate){
         mode = detectMode;
-        sr = SampleRate;
-        attack = daisysp::fastpower (0.01, 1.0/(attackMS * sr * 0.001));
-        release = daisysp::fastpower(0.01, 1.0/(releaseMS * sr * 0.001));
-        hold = holdMS / 1000. * sr;
+        fs = SampleRate;
+        attack = mbdsp::powf_approx(0.01, 1.0/(attackMS * fs * 0.001));
+        release = mbdsp::powf_approx(0.01, 1.0/(releaseMS * fs * 0.001));
+        hold = holdMS / 1000. * fs;
         env = 0;
         timer = 0;
         rmsWindowLength = SampleRate * 0.2;
@@ -83,7 +82,7 @@ public:
     }
     
 protected:
-    float attack, release, env, sr;
+    float attack, release, env, fs;
     int index, timer, hold, mode, rmsWindowLength;
     std::vector<float> buffer;
 };
@@ -115,15 +114,15 @@ public:
     }
     
     void setAttack(float attackMS){
-        attack = daisysp::fastpower(0.01, 1.0/(attackMS * sr * 0.001));
+        attack = daisysp::fastpower(0.01, 1.0/(attackMS * fs * 0.001));
     }
     
     void setRelease(float releaseMS){
-        release = daisysp::fastpower(0.01, 1.0/(releaseMS * sr * 0.001));
+        release = daisysp::fastpower(0.01, 1.0/(releaseMS * fs * 0.001));
     }
     
     void setHold(float holdMS){
-        hold = holdMS / 1000. * sr;
+        hold = holdMS / 1000. * fs;
     }
     
     void setKnee(float knee){
@@ -162,7 +161,7 @@ public:
     
     
     inline float process(float sample){
-        float e = ampToDb(EnvFollower::process(sample));
+        float e = mbdsp::amp_to_db(EnvFollower::process(sample));
         if(kneeWidth > 0.f && e > kneeBoundL && e < kneeBoundU){
             slope *= ((e - kneeBoundL) / kneeWidth) * 0.5;
             gainReduction = slope * (kneeBoundL  - e);
@@ -172,12 +171,12 @@ public:
             gainReduction = fmin(0., gainReduction);
         }
         
-        return sample * dbToAmp(gainReduction);
+        return sample * mbdsp::db_to_amp(gainReduction);
     }
     
     //Takes in two samples, processes them, and returns gain reduction in dB
     float processStereo(float sample1, float sample2){
-        float e = ampToDb(EnvFollower::process(fmax(sample1, sample2)));
+        float e = mbdsp::amp_to_db(EnvFollower::process(fmax(sample1, sample2)));
         calcSlope();
         
         if(kneeWidth > 0. && e > kneeBoundL && e < kneeBoundU){

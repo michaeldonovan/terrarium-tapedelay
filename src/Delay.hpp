@@ -11,67 +11,67 @@ class Delay : public Processor
 public:
    void Init(float sampleRate, float timeSmoothSec)
    {
-      _sr = sampleRate;
-      _delay.Init();
-      _timeVal.Init(sampleRate, timeSmoothSec);
+      fs_ = sampleRate;
+      delay_.Init();
+      timeVal_.Init(sampleRate, timeSmoothSec);
    }
 
    float Process(float in) override
    {
-      _delay.SetDelay(_timeVal.GetNext());
+      delay_.SetDelay(timeVal_.GetNext());
 
-      auto read = _delay.Read();
-      float write = _feedback * read; 
-      if (_inputEnable)
+      auto read = delay_.Read();
+      float write = feedback_ * read; 
+      if (inputEnable_)
       {
          write += in;
       }
 
-      if (_proc)
+      if (proc_)
       {
-         write = _proc->Process(write);
+         write = proc_->Process(write);
       }
 
-      _delay.Write(write);
+      delay_.Write(write);
 
       return read;
    }
 
    inline void SetFeedback(float feedback)
    {
-      _feedback = feedback;
+      feedback_ = feedback;
    }
 
    inline void EnableInput(bool enable)
    {
-      _inputEnable = enable;
+      inputEnable_ = enable;
    }
 
    inline void SetTime(float time)
    {
-      _timeVal.SetTarget(daisysp::fclamp(time, 0, max_size));
+      timeVal_.SetTarget(mbdsp::clamp<float>(time, 0, max_size));
    }
 
    inline float GetTime()
    {
-      return _timeVal.GetCurrent(); 
+      return timeVal_.GetCurrent(); 
    }
 
    inline void Reset()
    {
-      _delay.Reset();
+      delay_.Reset();
    }
 
    inline void SetFeedbackProcessor(Processor* proc)
    {
-      _proc = proc;
+      proc_ = proc;
    }
 
 private:
-   float _sr;
-   SmoothedValue _timeVal;
-   float _feedback = 0;
-   bool _inputEnable = true;
-   Processor* _proc;
-   daisysp::DelayLine<float, max_size> _delay;
+   float fs_;
+   SmoothedValue timeVal_;
+   float feedback_ = 0;
+   bool inputEnable_ = true;
+   Processor* proc_;
+   daisysp::DelayLine<float, max_size> delay_;
 };
