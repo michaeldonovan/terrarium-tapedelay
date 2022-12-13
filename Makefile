@@ -12,4 +12,4 @@ DAISYSP_DIR = src/thirdparty/DaisySP
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-C_INCLUDES += -Isrc/thirdparty -Isrc/thirdparty/Terrarium -Isrc/thirdparty/hiir-1.4.0 
+C_INCLUDES += -Isrc/thirdparty -Isrc/mbdsp/thirdparty/hiir-1.4.0 -Isrc/mbdsp -Isrc/mbdsp/thirdparty

@@ -7,3 +7,6 @@
 [submodule "Terrarium"]
 	path = src/thirdparty/Terrarium
 	url = https://github.com/PedalPCB/Terrarium
+[submodule "src/mbdsp"]
+	path = src/mbdsp
+	url = https://github.com/michaeldonovan/mbdsp
