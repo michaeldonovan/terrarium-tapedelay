@@ -3,6 +3,10 @@
 
 #include <daisy.h>
 
+constexpr uint8_t FLASH_DATA_VERSION = 1;
+
+constexpr size_t QSPI_ADDR_BASE = 0;
+
 constexpr auto DAISY_SR = daisy::SaiHandle::Config::SampleRate::SAI_48KHZ;
 
 constexpr float SampleRate()
