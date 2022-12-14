@@ -55,9 +55,9 @@ mbdsp::SmoothedValue<float> feedback_val;
 
 //////////////////////////////////////////////////////////////////
 // processors
-Delay<MAX_DELAY, float> delay;
+Delay<float> delay;
 
-mbdsp::TapTempo<decltype(&daisy::System::GetNow)> tap_tempo;
+mbdsp::TapTempo<decltype(daisy::System::GetNow())> tap_tempo;
 
 Tape<float> tape;
 
@@ -120,7 +120,7 @@ void ProcessSwitches()
 
     if(tapSw->RisingEdge())
     {
-        const auto beat_len_ms = tap_tempo.Tap();
+        const auto beat_len_ms = tap_tempo.Tap(daisy::System::GetNow());
         const auto beat_len_samples = beat_len_ms * hw.AudioSampleRate() * .001f;
         if(beat_len_samples >= MIN_DELAY && beat_len_samples <= MAX_DELAY)
         {
@@ -247,12 +247,12 @@ int main(void)
     bypass_led.Update();
     tempo_led.Init(hw.seed.GetPin(Terrarium::LED_2), false);
     tempo_led.Update();
-    tap_tempo.Init(&daisy::System::GetNow, MAX_DELAY_SEC * 1000);
+    tap_tempo.Init(MAX_DELAY_SEC * 1000);
 
     tape.Init(sr);
     tape.SetHpCutoff(150);
     // init processors
-    delay.Init(sr, DELAY_SMOOTH_MS);
+    delay.Init(sr, MAX_DELAY, DELAY_SMOOTH_MS);
     delay.SetFeedbackProcessor(&tape);
     // wow.Init(sr);
     // wow.SetRate(1);
@@ -270,6 +270,7 @@ int main(void)
     flutter_osc.SetAmp(20);  // 50 max
     tempo_osc.Init(sr);
     tempo_osc.SetWaveform(Oscillator::WAVE_SIN);
+    // tempo_osc.PhaseAdd(.5);
     tempo_osc.SetAmp(1);
 
     feedback_val.Init(sr, 250, .5);
