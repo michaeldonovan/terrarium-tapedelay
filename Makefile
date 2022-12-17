@@ -8,6 +8,7 @@ CPP_SOURCES = src/main.cpp  src/mbdsp/thirdparty/hiir-1.4.0/hiir/PolyphaseIir2De
 LIBDAISY_DIR = src/thirdparty/libDaisy
 DAISYSP_DIR = src/thirdparty/DaisySP
 
+CPP_STANDARD = -std=gnu++20
 #APP_TYPE = BOOT_QSPI
 
 # Core location, and generic Makefile.
