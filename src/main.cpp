@@ -1,3 +1,4 @@
+#include <memory>
 #include <random>
 
 #include <daisysp.h>
@@ -8,6 +9,8 @@
 #include "mbdsp/Delay.hpp"
 #include "mbdsp/TapTempo.hpp"
 #include "mbdsp/Tape.hpp"
+#include "mbdsp/TapeModels/Echorec.hpp"
+#include "mbdsp/TapeModels/SpaceEcho.hpp"
 #include "mbdsp/Utils.hpp"
 
 #include "Constants.hpp"
@@ -49,6 +52,12 @@ Params params_active;
 Params params_favorite;
 
 mbdsp::SmoothedValue<float> feedback_val;
+
+constexpr uint8_t TAPE_MODELS_SIZE = 3;
+const std::shared_ptr<const mbdsp::TapeModel> TAPE_MODELS[TAPE_MODELS_SIZE] = {
+    std::make_shared<mbdsp::TapeModel>(),  // default, "Studio" tape
+    std::make_shared<mbdsp::TapeModels::SpaceEcho>(),
+    std::make_shared<mbdsp::TapeModels::Echorec>()};
 // End parameters
 //////////////////////////////////////////////////////////////////
 
@@ -191,7 +200,9 @@ void ProcessKnobs()
     wow_osc.SetFreq(WOW_FREQ + wow_mod);
     flutter_osc.SetFreq(FLUTTER_FREQ + flut_mod);
 
-    tape.SetModel(voice_param.Process());
+    const auto tape_model_idx =
+        mbdsp::clamp<decltype(TAPE_MODELS_SIZE)>(0, TAPE_MODELS_SIZE, voice_param.Process());
+    tape.SetModel(TAPE_MODELS[tape_model_idx]);
 
     auto age = age_param.Process();
     params_active.age = age;
