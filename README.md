@@ -1,9 +1,16 @@
 # terrarium-tapedelay
 
-## Author
+A simple tape delay for Daisy Seed using PedalPCB's Terrarium board.
 
-<!-- Insert Your Name Here -->
+Knob 1: Delay Time
+Knob 2: Feedback
+Knob 3: Level
+Knob 4: Tape Age
+Knob 5: Wow & Flutter
+Knob 6: Tape Model
+Footswitch 1: Bypass (hold to clear delay line)
+Footswitch 2: Tap tempo 
+Toggle Switches: Unused
 
-## Description
 
-<!-- Describe your example here -->
+Uses hysteresis model from Jatin Chowdhury's excellent [CHOWTape](https://github.com/jatinchowdhury18/AnalogTapeModel). Licensed under GPLv3.0 
