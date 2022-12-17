@@ -12,7 +12,6 @@
 
 #include "Constants.hpp"
 #include "Params.hpp"
-#include "TapeAttrs.hpp"
 // #include "Vibrato.hpp"
 
 using namespace daisy;
@@ -35,7 +34,7 @@ Switch *tapSw;
 
 //////////////////////////////////////////////////////////////////
 // Paramters
-Parameter mix, time, feedback, stabParam, ageParam;
+Parameter mix, time, feedback, stab_param, age_param, voice_param;
 
 bool effect_enabled = false;
 bool tails = true;
@@ -60,8 +59,6 @@ Delay<float> delay;
 mbdsp::TapTempo<decltype(daisy::System::GetNow())> tap_tempo;
 
 Tape<float> tape;
-
-TapeAttrs tapeAttrs;
 
 Oscillator wow_osc;
 Oscillator flutter_osc;
@@ -181,7 +178,7 @@ void ProcessKnobs()
 
     tempo_osc.SetFreq(hw.AudioSampleRate() / params_active.delay_time);
 
-    auto stab = stabParam.Process();
+    auto stab = stab_param.Process();
     params_active.stability = stab;
     wow_osc.SetAmp(WOW_MAX_AMP * stab);
     flutter_osc.SetAmp(FLUTTER_MAX_AMP * stab);
@@ -194,10 +191,11 @@ void ProcessKnobs()
     wow_osc.SetFreq(WOW_FREQ + wow_mod);
     flutter_osc.SetFreq(FLUTTER_FREQ + flut_mod);
 
-    auto age = ageParam.Process();
+    tape.SetModel(voice_param.Process());
+
+    auto age = age_param.Process();
     params_active.age = age;
-    auto lpFc = mbdsp::remap_exp(1 - age, LOSS_LP_FC_MIN, LOSS_LP_FC_MAX);
-    tape.SetLossFilter(lpFc);
+    tape.SetLossFilter(1 - age);
     auto tapeDriveDb = mbdsp::remap(age, TAPE_DRIVE_DB_MIN, TAPE_DRIVE_DB_MAX);
     tape.SetDrive(tapeDriveDb);
 }
@@ -275,21 +273,15 @@ int main(void)
 
     feedback_val.Init(sr, 250, .5);
 
-    tapeAttrs.speed = 15;
-    tapeAttrs.spacing = .1;
-    tapeAttrs.thickness = .1;
-    tapeAttrs.gap = 1;
-    tapeAttrs.azimuth = 0;
-
     // init knobs
     time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
     feedback.Init(hw.knob[Terrarium::KNOB_2], 0.f, 1.f, Parameter::LINEAR);
     mix.Init(hw.knob[Terrarium::KNOB_3], 0.f, 1.f, Parameter::EXPONENTIAL);
-    ageParam.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
-    // lpParam.Init(hw.knob[Terrarium::KNOB_5], 400, 15000,
+    age_param.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
+    // lp_param.Init(hw.knob[Terrarium::KNOB_5], 400, 15000,
     // Parameter::LOGARITHMIC);
-    stabParam.Init(hw.knob[Terrarium::KNOB_5], 0.f, 1.f, Parameter::EXPONENTIAL);
-    // satParam.Init(hw.knob[Terrarium::KNOB_6], 0, 18, Parameter::LINEAR);
+    stab_param.Init(hw.knob[Terrarium::KNOB_5], 0.f, 1.f, Parameter::EXPONENTIAL);
+    voice_param.Init(hw.knob[Terrarium::KNOB_6], 0, 3, Parameter::LINEAR);
 
     FlashLoad();
 
