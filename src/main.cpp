@@ -207,8 +207,6 @@ void ProcessKnobs()
     auto age = age_param.Process();
     params_active.age = age;
     tape.SetLossFilter(1 - age);
-    auto tapeDriveDb = mbdsp::remap(age, TAPE_DRIVE_DB_MIN, TAPE_DRIVE_DB_MAX);
-    tape.SetDrive(tapeDriveDb);
 }
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
@@ -231,7 +229,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
             // out[0][i] = wet;
 
-            out[0][i] = dry + params_active.mix * wet;
+            out[0][i] = dry + mbdsp::db_to_amp(params_active.mix) * wet;
         }
         else
         {
@@ -260,6 +258,7 @@ int main(void)
 
     tape.Init(sr);
     tape.SetHpCutoff(150);
+    tape.SetDrive(TAPE_DRIVE_DB);
     // init processors
     delay.Init(sr, MAX_DELAY, DELAY_SMOOTH_MS);
     delay.SetFeedbackProcessor(&tape);
@@ -287,7 +286,7 @@ int main(void)
     // init knobs
     time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
     feedback.Init(hw.knob[Terrarium::KNOB_2], 0.f, 1.f, Parameter::LINEAR);
-    mix.Init(hw.knob[Terrarium::KNOB_3], 0.f, 1.f, Parameter::EXPONENTIAL);
+    mix.Init(hw.knob[Terrarium::KNOB_3], -18.f, 0.f, Parameter::LINEAR);
     age_param.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
     // lp_param.Init(hw.knob[Terrarium::KNOB_5], 400, 15000,
     // Parameter::LOGARITHMIC);

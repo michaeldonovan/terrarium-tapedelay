@@ -50,7 +50,6 @@ constexpr float FLUTTER_MAX_AMP = 0.0008 * SampleRate();
 constexpr float LOSS_LP_FC_MIN = 1000.f;
 constexpr float LOSS_LP_FC_MAX = 6000.f;
 
-constexpr float TAPE_DRIVE_DB_MIN = 6.f;
-constexpr float TAPE_DRIVE_DB_MAX = 14.f;
+constexpr float TAPE_DRIVE_DB = 12.f;
 
 #endif  // CONSTANTS_HPP
