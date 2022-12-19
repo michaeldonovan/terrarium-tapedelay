@@ -286,7 +286,7 @@ int main(void)
     // init knobs
     time.Init(hw.knob[Terrarium::KNOB_1], MIN_DELAY, MAX_DELAY, Parameter::LOGARITHMIC);
     feedback.Init(hw.knob[Terrarium::KNOB_2], 0.f, 1.f, Parameter::LINEAR);
-    mix.Init(hw.knob[Terrarium::KNOB_3], -18.f, 0.f, Parameter::LINEAR);
+    mix.Init(hw.knob[Terrarium::KNOB_3], -14.f, 3.f, Parameter::LINEAR);
     age_param.Init(hw.knob[Terrarium::KNOB_4], 0.f, 1.f, Parameter::LINEAR);
     // lp_param.Init(hw.knob[Terrarium::KNOB_5], 400, 15000,
     // Parameter::LOGARITHMIC);
