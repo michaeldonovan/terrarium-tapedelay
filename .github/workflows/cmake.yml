@@ -24,7 +24,7 @@ jobs:
         submodules: 'true'
 
     - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
-      uses: carlosperate/arm-none-eabi-gcc-action@v1
+      uses: ryanwinter/arm-none-eabi-gcc@v2.0.4
       with:
         release: '10.3-2021.10' # <-- The compiler release to use
         
