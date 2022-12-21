@@ -1,3 +1,5 @@
+![CI Badge](https://github.com/michaeldonovan/terrarium-tapedelay/actions/workflows/build.yml/badge.svg)
+
 # terrarium-tapedelay
 
 A simple tape delay for Daisy Seed using PedalPCB's Terrarium board.
